@@ -1,26 +1,35 @@
 import 'package:contacts_service/contacts_service.dart';
+import 'package:fetch_contact/theme_model.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+  final isDark = sharedPreferences.getBool('_isDark') ?? false;
+  runApp(MyApp(isDark: isDark));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, required this.isDark});
+  final bool isDark;
 
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        useMaterial3: true,
-        primarySwatch: Colors.blue,
-      ),
-      home: const ContactList(),
-    );
+    return ChangeNotifierProvider<ThemeModel>(
+        create: (context) => ThemeModel(isDark),
+        builder: (context, snapshot) {
+          final setting = Provider.of<ThemeModel>(context);
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Flutter Demo',
+            theme: setting.currentTheme,
+            home: const ContactList(),
+          );
+        });
   }
 }
 
@@ -55,6 +64,11 @@ class _ContactListState extends State<ContactList> {
     isLoading = false;
   }
 
+  void _toggleTheme() {
+    final setting = Provider.of<ThemeModel>(context, listen: false);
+    setting.toggleTheme();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,13 +76,19 @@ class _ContactListState extends State<ContactList> {
         title: const Text(
           "Contact Fetch",
         ),
+        actions: [
+          IconButton(
+            onPressed: _toggleTheme,
+            icon: const Icon(Icons.lightbulb),
+          )
+        ],
       ),
       body: isLoading
           ? const Center(
               child: CircularProgressIndicator(),
             )
           : ListView.builder(
-            itemCount: contacts.length,
+              itemCount: contacts.length,
               itemBuilder: (context, index) {
                 return ListTile(
                   leading: Container(
@@ -91,7 +111,7 @@ class _ContactListState extends State<ContactList> {
                       borderRadius: BorderRadius.circular(20),
                       color: Colors.limeAccent,
                     ),
-                    child:  Text(contacts[index].givenName![0]),
+                    child: Text(contacts[index].givenName![0]),
                   ),
                   title: Text(contacts[index].givenName!),
                   subtitle: Text(contacts[index].phones![0].value!),
